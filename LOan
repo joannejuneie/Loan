@@ -1,0 +1,189 @@
+HTML
+
+
+<div class="container">
+    <h2>Approval required Loans</h2>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Loan ID</th>
+          <th>Customer ID</th>
+          <th>Loan Type ID</th>
+          <th>Amount Requested</th>
+          <th>Tenure</th>
+          <th>Sanction Amount</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let loan of approvedLoans">
+          <td>{{ loan.loanApplicationId }}</td>
+          <td>{{ loan.customerId }}</td>
+          <td>{{ loan.loanTypeId }}</td>
+          <td>{{ loan.amountRequested }}</td>
+          <td>{{ loan.tenure }}</td>
+          <td>
+            <!-- <input type="number" [(ngModel)]="selectedLoan.sanctionAmount" placeholder="Sanction Amount" /> -->
+
+            <input type="number" [(ngModel)]="amountSanctioned[loan.loanApplicationId]" placeholder="Sanction Amount" />
+          </td>
+          <td>
+            <input type="text" [(ngModel)]="status[loan.loanApplicationId]" placeholder="Status" />
+          </td>
+          <td>
+            <button (click)="updateLoanStatus(loan.loanApplicationId)" class="btn btn-primary">Submit</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div> 
+
+  <!-- <div *ngFor="let loan of approvedLoans">
+    <div>
+      <h3>Loan Application ID: {{loan.loanApplicationId}}</h3>
+      <p>Customer ID: {{loan.customerId}}</p>
+      <p>Loan Type ID: {{loan.loanTypeId}}</p>
+      <p>Amount Requested: {{loan.amountRequested}}</p>
+      <p>Date of Application: {{loan.dateOfApplication | date}}</p>
+      <p>Loan Status: {{loan.loanStatus}}</p>
+    </div>
+    <form (ngSubmit)="onSubmit(loan.loanApplicationId)">
+      <div>
+        <label>Sanction Amount:</label>
+        <input type="number" [(ngModel)]="loan.sanctionAmount" name="sanctionAmount{{loan.loanApplicationId}}" required>
+      </div>
+      <div>
+        <label>Status:</label>
+        <input type="text" [(ngModel)]="loan.loanStatus" name="loanStatus{{loan.loanApplicationId}}" required>
+      </div>
+      <button type="submit">Submit</button>
+    </form>
+    <hr>
+  </div> -->
+
+
+COMPONENT
+
+import { Component, OnInit } from '@angular/core';
+import { AdminLoginService } from '../admin-login.service';
+
+@Component({
+  selector: 'app-loan-approval',
+  templateUrl: './loan-approval.component.html',
+  styleUrls: ['./loan-approval.component.css']
+})
+export class ApprovedLoansComponent implements OnInit {
+  selectedLoan:any={};
+  approvedLoans: any[] = [];
+  amountSanctioned: {[key:number]:number}={};
+  status: {[key:number]:string}={};
+
+  constructor(private AdminLoginService: AdminLoginService) { }
+
+  ngOnInit(): void {
+    this.loadApprovedLoans();
+  }
+
+  loadApprovedLoans(): void {
+    this.AdminLoginService.getApprovedLoans().subscribe(
+      (data: any) => {
+        console.log(this.approvedLoans=data);
+       // this.approvedLoans = data;
+      },
+      (error: any) => {
+        console.error('Error fetching approved loans:', error);
+      }
+    );
+  }
+
+  updateLoanStatus(loanId: number): void {
+    console.log("Entered in Loan Status");
+    console.log(loanId);
+    this.AdminLoginService.updateLoanStatus(loanId, this.amountSanctioned[loanId], this.status[loanId]).subscribe(
+      (data: any) => {
+        console.log(this.amountSanctioned[loanId])
+        console.log(this.approvedLoans=data);
+        console.log('Loan status updated successfully');
+        this.loadApprovedLoans(); // Refresh the list after update
+      },
+      (error: any) => {
+        console.error('Error updating loan status:', error);
+      }
+    );
+  }
+}
+
+
+SERVICE
+
+// import { Injectable } from '@angular/core';
+// import { HttpClient } from '@angular/common/http';
+// import { Observable } from 'rxjs';
+// @Injectable({
+//   providedIn: 'root'
+// })
+// export class AdminLoginService {
+
+//   constructor(private http: HttpClient) { }
+//   //change Url
+//   private baseUrl: string = 'https://localhost:44346/api/';
+//   getLoanApplications(): Observable<any[]> {   
+//     return this.http.get<any[]>(`${this.baseUrl}`+"Loan/GetLoanApplicationStatus");
+//   }
+
+//   // addLoan(loan: any): Observable<any> {
+//   //   return this.http.post<any>(`${this.baseUrl}`+ "Loan/POST/Loan/LoanApplication",loan);
+//   // }
+// }
+
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpHandler, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AdminLoginService {
+  private baseUrl: string = 'https://localhost:44346/api/'; // Adjust the URL as needed
+
+  constructor(private http: HttpClient) { }
+
+  getApprovedLoans(): Observable<any> {
+    return this.http.get<any[]>(`${this.baseUrl}`+"Loan/GetLoanApplicationStatus");
+  }
+
+  updateLoanStatus(loanId: number, amountSanctioned: number, status: string): Observable<any> {
+    console.log(amountSanctioned)
+    console.log(status)
+    console.log(loanId)
+    console.log("Entered in Loan Service")
+    const loanApplication={loanApplicationId:loanId, amountSanctioned: amountSanctioned,LoanStatus:status};
+    //return this.http.post<void>(`${this.baseUrl}Loan/PUT/Loan/ApproveLoanApplication`,body)
+    // let params = new HttpParams()
+    // .set('loanId',loanId)
+    // .set('sanctionAmount',sanctionAmount)
+    // .set('status',status)
+    const headers = new HttpHeaders()
+    .set('Content-Type','application/json');
+    return this.http.put<void>(`${this.baseUrl}Loan/PUT/Loan/ApproveLoanApplication`,loanApplication,{
+      headers:headers
+  
+      
+    }
+  );
+ 
+    
+    // const body = { loanId, sanctionAmount, status };
+    // return this.http.put<any>(`${this.baseUrl}`+ "Loan/PUT/Loan/ApproveLoanApplication",body);
+  }
+}
+
+
+
+ 
+ 
+
+   
+
+
