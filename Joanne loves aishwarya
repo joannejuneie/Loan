@@ -1,0 +1,227 @@
+html loan payment
+
+
+<div class="container">
+    <h2>Loan Payment</h2>
+    <div>
+        <label for="customerId">Customer ID:</label>
+        <input type="number" id="customerId" [(ngModel)]="customerId" placeholder="Enter Customer ID" />
+        <button (click)="fetchLoanApplications()" class="btn btn-primary">Fetch Loans</button>
+    </div>
+    <br />
+    <table class="table table-bordered" *ngIf="loanApplications.length > 0">
+        <thead>
+            <tr>
+                <th>Loan ID</th>
+                <th>Amount Requested</th>
+                <th>Tenure</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let loan of loanApplications">
+                <td>{{ loan.loanId }}</td>
+                <td>{{ loan.amountRequested }}</td>
+                <td>{{ loan.tenure }}</td>
+                <td>{{ loan.status }}</td>
+                <td>
+                    <button (click)="goToPaymentPage(loan)" class="btn btn-primary">Pay</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+
+
+
+
+
+loanpaymentcompontn
+
+
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { AdminLoginService } from '../admin-login.service';
+
+@Component({
+  selector: 'app-loan-payment',
+  templateUrl: './loan-payment.component.html',
+  styleUrls: ['./loan-payment.component.css']
+})
+export class LoanPaymentComponent implements OnInit {
+  customerId: number;
+  loanApplications: any[] = [];
+
+  constructor(private adminLoginService: AdminLoginService, private router: Router) { }
+
+  ngOnInit(): void {
+  }
+
+  fetchLoanApplications(): void {
+    this.adminLoginService.getLoanApplicationsByCustomerId(this.customerId).subscribe(
+      (data: any) => {
+        this.loanApplications = data;
+      },
+      (error: any) => {
+        console.error('Error fetching loan applications:', error);
+      }
+    );
+  }
+
+  goToPaymentPage(loan: any): void {
+    this.router.navigate(['/payment', loan.loanId]);
+  }
+}
+
+
+
+
+
+payment page html
+
+
+<div class="container">
+    <h2>Payment for Loan ID: {{ loanId }}</h2>
+    <div>
+        <label for="amount">Payment Amount:</label>
+        <input type="number" id="amount" [(ngModel)]="paymentAmount" placeholder="Enter Payment Amount" />
+    </div>
+    <br />
+    <button (click)="makePayment()" class="btn btn-primary">Pay</button>
+</div>
+
+
+
+
+payment.ts
+
+
+
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { AdminLoginService } from '../admin-login.service';
+
+@Component({
+  selector: 'app-payment',
+  templateUrl: './payment.component.html',
+  styleUrls: ['./payment.component.css']
+})
+export class PaymentComponent implements OnInit {
+  loanId: number;
+  paymentAmount: number;
+
+  constructor(private route: ActivatedRoute, private adminLoginService: AdminLoginService) { }
+
+  ngOnInit(): void {
+    this.loanId = +this.route.snapshot.paramMap.get('loanId');
+  }
+
+  makePayment(): void {
+    this.adminLoginService.makePayment(this.loanId, this.paymentAmount).subscribe(
+      (data: any) => {
+        console.log('Payment successful');
+        // Add any additional success handling here
+      },
+      (error: any) => {
+        console.error('Error making payment:', error);
+      }
+    );
+  }
+}
+
+
+
+
+
+service
+
+
+
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AdminLoginService {
+  private baseUrl: string = 'https://localhost:44346/api/';
+
+  constructor(private http: HttpClient) { }
+
+  getLoanApplicationsByCustomerId(customerId: number): Observable<any> {
+    return this.http.get<any[]>(`${this.baseUrl}Loan/GetLoansByCustomerId/${customerId}`);
+  }
+
+  makePayment(loanId: number, amount: number): Observable<any> {
+    const headers = new HttpHeaders().set('Content-Type', 'application/json');
+    const body = { loanId, amount };
+    return this.http.post<any>(`${this.baseUrl}Loan/MakePayment`, body, { headers });
+  }
+}
+
+
+
+
+routing module
+
+
+
+
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { LoanPaymentComponent } from './loan-payment/loan-payment.component';
+import { PaymentComponent } from './payment/payment.component';
+
+const routes: Routes = [
+  { path: 'loan-payment', component: LoanPaymentComponent },
+  { path: 'payment/:loanId', component: PaymentComponent },
+  { path: '', redirectTo: '/loan-payment', pathMatch: 'full' }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+
+
+
+
+app module
+
+
+
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+import { AppRoutingModule } from './app-routing.module';
+import { AppComponent } from './app.component';
+import { LoanPaymentComponent } from './loan-payment/loan-payment.component';
+import { PaymentComponent } from './payment/payment.component';
+import { AdminLoginService } from './admin-login.service';
+
+@NgModule({
+  declarations: [
+    AppComponent,
+    LoanPaymentComponent,
+    PaymentComponent
+  ],
+  imports: [
+    BrowserModule,
+    FormsModule,
+    HttpClientModule,
+    AppRoutingModule
+  ],
+  providers: [AdminLoginService],
+  bootstrap: [AppComponent]
+})
+export class AppModule { }
+
+
+
+
+
